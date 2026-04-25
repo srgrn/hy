@@ -22,7 +22,7 @@
     color: var(--ink);
   }
   main {
-    max-width: 820px;
+    max-width: 1040px;
     margin: 0 auto;
     padding: 48px 24px 96px;
   }
@@ -45,7 +45,7 @@
   pre code { background: transparent; border: 0; padding: 0; }
   .file-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     gap: 12px;
     margin: 1em 0;
   }
@@ -104,7 +104,7 @@
 <main>
 
 <h1>hy</h1>
-<p class="lede">Per-prompt shell history logger plus a <code>hy &lt;pattern&gt;</code> search shortcut. Three sourceable files — one per shell — that share a common on-disk format.</p>
+<p class="lede">Per-prompt shell history logger plus a <code>hy &lt;pattern&gt;</code> search shortcut. Sourceable files — one per shell — that share a common on-disk format.</p>
 
 <h2>What this does</h2>
 
@@ -132,7 +132,7 @@ hy -i FOR             # case-insensitive
 hy "dir with spaces"  # works because tabs separate fields
 hyr git               # most recent git invocations first</code></pre>
 
-<h2>The three files</h2>
+<h2>The files</h2>
 
 <div class="file-grid">
   <div class="card">
@@ -150,13 +150,18 @@ hyr git               # most recent git invocations first</code></pre>
     <p>Hooks <code>fish_postexec</code> — receives the command directly as <code>$argv[1]</code>, so multi-line capture is automatic.</p>
     <p class="actions"><a href="hy.fish" download>⬇ Download</a> · <a href="hy.fish" target="_blank" rel="noopener">view</a></p>
   </div>
+  <div class="card">
+    <h3>hy.ps1</h3>
+    <p>Wraps PowerShell's <code>prompt</code> function idempotently. Uses <code>Get-History</code> for logging and <code>Select-String</code> for search.</p>
+    <p class="actions"><a href="hy.ps1" download>⬇ Download</a> · <a href="hy.ps1" target="_blank" rel="noopener">view</a></p>
+  </div>
 </div>
 
 <p class="muted" style="font-size:.88rem;">
   Tip: <code>file://</code> in some browsers ignores the <code>download</code> attribute and opens the file inline instead. If that happens, right-click the link and choose <em>Save Link As…</em>, or serve this folder over HTTP — e.g. <code>python3 -m http.server</code> from the <code>hy/</code> directory, then open <a href="http://localhost:8000/" target="_blank" rel="noopener">localhost:8000</a>.
 </p>
 
-<p>All three write the same on-disk format, so you can switch shells and <code>hy</code> still searches across history written by any of them.</p>
+<p>All implementations write the same on-disk format, so you can switch shells and <code>hy</code> still searches across history written by any of them.</p>
 
 <h2>Installation</h2>
 
@@ -176,14 +181,18 @@ hyr git               # most recent git invocations first</code></pre>
 <p>Drops the file straight into <code>~/.config/fish/conf.d/</code> — fish auto-loads anything in there, no extra <code>source</code> line needed:</p>
 <pre class="cmd"><code data-cmd>mkdir -p ~/.config/fish/conf.d && curl -fsSL "__BASE__/hy.fish?v="(date +%s)"-$fish_pid" -o ~/.config/fish/conf.d/hy.fish && exec fish</code></pre>
 
+<h3>PowerShell</h3>
+<p>Downloads to <code>$HOME/.config/hy/hy.ps1</code> and adds a guarded dot-source line to <code>$PROFILE.CurrentUserAllHosts</code>:</p>
+<pre class="cmd"><code data-cmd>$HyDir = Join-Path $HOME ".config/hy"; New-Item -ItemType Directory -Force $HyDir | Out-Null; $HyFile = Join-Path $HyDir "hy.ps1"; Invoke-WebRequest -UseBasicParsing "__BASE__/hy.ps1?v=$([DateTime]::UtcNow.Ticks)-$PID" -OutFile $HyFile; if (Get-Command Unblock-File -ErrorAction SilentlyContinue) { Unblock-File -Path $HyFile }; $HyProfile = $PROFILE.CurrentUserAllHosts; New-Item -ItemType Directory -Force (Split-Path -Parent $HyProfile) | Out-Null; $HySource = '. "$HOME/.config/hy/hy.ps1"'; if (-not (Test-Path $HyProfile) -or -not (Select-String -Path $HyProfile -SimpleMatch $HySource -Quiet)) { Add-Content -Path $HyProfile -Value $HySource }; . $HyFile</code></pre>
+
 <h2>What gets defined</h2>
 
 <table>
   <thead><tr><th>Name</th><th>Kind</th><th>Purpose</th></tr></thead>
   <tbody>
-    <tr><td><code>precmd</code> (zsh) / <code>__hy_log</code> (bash, fish)</td><td>hook</td><td>Runs before/after each prompt; appends one log entry.</td></tr>
-    <tr><td><code>hy &lt;pattern&gt; [grep-opts…]</code></td><td>function</td><td>Greps across <code>~/.logs/history-*.log</code>. Chronological order.</td></tr>
-    <tr><td><code>hyr &lt;pattern&gt; [grep-opts…]</code></td><td>function</td><td>Same as <code>hy</code>, newest match first (uses <code>tac</code> or <code>tail -r</code>).</td></tr>
+    <tr><td><code>precmd</code> (zsh) / <code>__hy_log</code> (bash, fish, PowerShell)</td><td>hook</td><td>Runs before/after each prompt; appends one log entry.</td></tr>
+    <tr><td><code>hy &lt;pattern&gt; [options…]</code></td><td>function</td><td>Searches across <code>~/.logs/history-*.log</code>. Chronological order.</td></tr>
+    <tr><td><code>hyr &lt;pattern&gt; [options…]</code></td><td>function</td><td>Same as <code>hy</code>, newest match first.</td></tr>
   </tbody>
 </table>
 
@@ -214,8 +223,10 @@ hy "dir with spaces"</code></pre>
 <ul>
   <li><strong>Decoding for display:</strong> if you want the original layout of a multi-line command back, pipe a log line through <code>printf '%b\n'</code> or <code>sed 's/\\n/\n/g; s/\\t/\t/g'</code>.</li>
   <li><strong>Old log entries</strong> (from any prior, space-delimited logger) remain in their existing files. <code>hy</code> still finds them by content — grep doesn't care about field structure — but they aren't tab-parseable.</li>
-  <li><strong>Root sessions are skipped</strong> (<code>EUID == 0</code>) by all three so a sudo'd shell doesn't pollute your personal history.</li>
-  <li><strong>First prompt of a fresh session</strong> may log the previous shell's last command (zsh/bash) — same edge case as the original simple logger, accepted in exchange for no per-command bookkeeping.</li>
+  <li><strong>Search options:</strong> shell implementations use <code>grep</code> options. PowerShell uses <code>Select-String</code> and supports <code>-i</code>/<code>--ignore-case</code> plus <code>-F</code>/<code>--fixed-strings</code>.</li>
+  <li><strong>Root/elevated sessions are skipped</strong> so a sudo'd or administrator shell doesn't pollute your personal history.</li>
+  <li><strong>First prompt of a fresh session</strong> may log the previous shell's last command (zsh/bash) — same edge case as the original simple logger, accepted in exchange for no per-command bookkeeping. PowerShell initializes its last seen history id when sourced to avoid that.</li>
+  <li><strong>PowerShell prompt customizers</strong> loaded after <code>hy.ps1</code> can replace the wrapped prompt and stop logging. Put the <code>hy.ps1</code> dot-source line after prompt customizers in your profile.</li>
   <li><strong><code>~/.logs</code> is created on demand</strong> if missing, so deleting the folder doesn't break the next prompt.</li>
 </ul>
 
@@ -229,7 +240,7 @@ hy "dir with spaces"</code></pre>
   // pgs.sh cache entry (the CDN serves zstd-encoded bytes from cache hits
   // without honoring Accept-Encoding).
   var bust = 'v=' + Date.now();
-  document.querySelectorAll('a[href$="hy.zsh"], a[href$="hy.bash"], a[href$="hy.fish"]').forEach(function (a) {
+  document.querySelectorAll('a[href$="hy.zsh"], a[href$="hy.bash"], a[href$="hy.fish"], a[href$="hy.ps1"]').forEach(function (a) {
     var sep = a.href.indexOf('?') >= 0 ? '&' : '?';
     a.href += sep + bust;
   });

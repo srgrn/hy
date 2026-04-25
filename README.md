@@ -76,7 +76,7 @@ mkdir -p ~/.config/fish/conf.d && curl -fsSL "__BASE__/hy.fish?v="(date +%s)"-$f
 Downloads to `$HOME/.config/hy/hy.ps1` and adds a guarded dot-source line to `$PROFILE.CurrentUserAllHosts`:
 
 ```powershell
-$HyDir = Join-Path $HOME ".config/hy"; New-Item -ItemType Directory -Force $HyDir | Out-Null; $HyFile = Join-Path $HyDir "hy.ps1"; Invoke-WebRequest -UseBasicParsing "__BASE__/hy.ps1?v=$([DateTimeOffset]::Now.ToUnixTimeSeconds())-$PID" -OutFile $HyFile; if (Get-Command Unblock-File -ErrorAction SilentlyContinue) { Unblock-File -Path $HyFile }; $HyProfile = $PROFILE.CurrentUserAllHosts; New-Item -ItemType Directory -Force (Split-Path -Parent $HyProfile) | Out-Null; $HySource = '. "$HOME/.config/hy/hy.ps1"'; if (-not (Test-Path $HyProfile) -or -not (Select-String -Path $HyProfile -SimpleMatch $HySource -Quiet)) { Add-Content -Path $HyProfile -Value $HySource }; . $HyFile
+$HyDir = Join-Path $HOME ".config/hy"; New-Item -ItemType Directory -Force $HyDir | Out-Null; $HyFile = Join-Path $HyDir "hy.ps1"; Invoke-WebRequest -UseBasicParsing "__BASE__/hy.ps1?v=$([DateTime]::UtcNow.Ticks)-$PID" -OutFile $HyFile; if (Get-Command Unblock-File -ErrorAction SilentlyContinue) { Unblock-File -Path $HyFile }; $HyProfile = $PROFILE.CurrentUserAllHosts; New-Item -ItemType Directory -Force (Split-Path -Parent $HyProfile) | Out-Null; $HySource = '. "$HOME/.config/hy/hy.ps1"'; if (-not (Test-Path $HyProfile) -or -not (Select-String -Path $HyProfile -SimpleMatch $HySource -Quiet)) { Add-Content -Path $HyProfile -Value $HySource }; . $HyFile
 ```
 
 Replace `__BASE__` with the actual URL serving this repo, or use the copy-ready commands from `index.html`.
@@ -86,8 +86,8 @@ Replace `__BASE__` with the actual URL serving this repo, or use the copy-ready 
 | Name | Kind | Purpose |
 | --- | --- | --- |
 | `precmd` (zsh) / `__hy_log` (bash, fish, PowerShell) | hook | Runs before or after each prompt and appends one log entry. |
-| `hy <pattern> [grep-opts...]` | function | Greps across `~/.logs/history-*.log` in chronological order. |
-| `hyr <pattern> [grep-opts...]` | function | Same as `hy`, but newest matches first. |
+| `hy <pattern> [options...]` | function | Searches across `~/.logs/history-*.log` in chronological order. |
+| `hyr <pattern> [options...]` | function | Same as `hy`, but newest matches first. |
 
 ## Verification
 
@@ -120,6 +120,7 @@ What to confirm:
 
 - To reconstruct multi-line formatting for display, pipe a log line through `printf '%b\n'` or `sed 's/\\n/\n/g; s/\\t/\t/g'`.
 - Older space-delimited log entries remain searchable by content, but they are not tab-parseable.
+- Shell implementations use `grep` options. PowerShell uses `Select-String` and supports `-i`/`--ignore-case` plus `-F`/`--fixed-strings`.
 - Root/elevated sessions are skipped by all implementations.
 - On zsh and bash, the first prompt of a fresh session can log the previous shell's last command. PowerShell initializes its last seen history id when sourced to avoid that.
 - If another PowerShell prompt customizer is loaded after `hy.ps1`, it can replace the wrapped prompt and stop logging. Put the `hy.ps1` dot-source line after prompt customizers in your profile.
