@@ -28,6 +28,22 @@ __hy_log() {
     strftime -s day "%Y-%m-%d"          $EPOCHSECONDS
     cmd=$(fc -ln -1)
     cmd=${cmd#$'\t'}
+    # Join line-continuations. zsh's `fc` renders a real continuation as THREE
+    # literal characters: backslash, backslash, n (hex 5c 5c 6e) — NOT a real
+    # newline. A user who typed \n also produces 5c 6e, so matching "backslash
+    # + newline" would never fire and the entry would keep its \n artifact.
+    # Match the 3-char form zsh actually emits, then collapse it to one space.
+    local bs=$'\\' cont=$'\\\\n'
+    while [[ $cmd == *"$cont"* ]]; do
+        local pre=${cmd%%"$cont"*} rest=${cmd#*"$cont"}
+        while [[ $pre == *' ' ]]; do pre=${pre% }; done
+        while [[ $rest == ' '* ]]; do rest=${rest# }; done
+        cmd=$pre' '$rest
+    done
+    # Escape the remaining control characters. Backslash goes FIRST, otherwise a
+    # literal backslash in the command would be indistinguishable from one of
+    # the escape sequences we are about to write.
+    cmd=${cmd//\\/\\\\}
     cmd=${cmd//$'\t'/\\t}
     cmd=${cmd//$'\n'/\\n}
     [[ -z $cmd ]] && return
