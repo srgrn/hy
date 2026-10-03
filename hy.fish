@@ -28,6 +28,16 @@ function __hy_log --on-event fish_postexec --description 'log each command to ~/
     end
     set -l ts  (date "+%Y-%m-%d.%H:%M:%S")
     set -l day (date "+%Y-%m-%d")
+    # Join line-continuations. fish's fish_postexec hands us the command text with
+    # a REAL backslash + REAL newline, so collapse that pair (and the indent
+    # after it) into a single space. --all handles several continuations at once,
+    # and a command with no continuation is left untouched, so no loop is needed.
+    # This is what keeps "cmd \<newline>  arg" as one readable log line.
+    set cmd (string replace --all --regex '[ \t]*\\+[\n][[:space:]]*' ' ' -- $cmd)
+    # Escape the remaining control characters. Backslash goes FIRST, otherwise a
+    # literal backslash in the command would be indistinguishable from one of
+    # the escape sequences we are about to write.
+    set cmd (string replace --all \\ '\\\\' -- $cmd)
     set cmd (string replace --all \t '\t' -- $cmd)
     set cmd (string replace --all \n '\n' -- $cmd)
     printf '%s\t%s\t%s\n' "$ts" "$PWD" "$cmd" >> ~/.logs/history-$day.log

@@ -33,6 +33,12 @@ __hy_log() {
     cmd=${cmd#$'\t'}
     cmd=${cmd# }
     [[ -z $cmd ]] && return
+    # NOTE: bash's `fc -ln -1` ALREADY collapses a line-continuation into spaces
+    # and never emits a real newline, so there is nothing to join here and no
+    # \n artifact to remove. We only escape the remaining control characters.
+    # Backslash goes FIRST, otherwise a literal backslash in the command would
+    # be indistinguishable from one of the escape sequences we write below.
+    cmd=${cmd//\\/\\\\}
     cmd=${cmd//$'\t'/\\t}
     cmd=${cmd//$'\n'/\\n}
     __hy_now ts day

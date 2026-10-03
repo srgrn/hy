@@ -39,7 +39,15 @@ function global:__hy_escape_field {
         return ''
     }
 
-    return $Value.Replace("`t", '\t').Replace("`r`n", '\n').Replace("`n", '\n').Replace("`r", '\n')
+    # Join shell line-continuations first: a trailing backslash plus a CRLF/LF
+    # pair is layout, not content, so collapse it to a single space. This is what
+    # keeps "cmd `n  arg" readable as one line instead of "cmd \n  arg".
+    $joined = [regex]::Replace($Value, '\\\r?\n\s*', ' ')
+
+    # Escape the remaining control characters. Backslash goes FIRST, otherwise a
+    # literal backslash in the command would be indistinguishable from one of the
+    # escape sequences we are about to write.
+    return $joined.Replace('\', '\\').Replace("`t", '\t').Replace("`r`n", '\n').Replace("`n", '\n').Replace("`r", '\n')
 }
 
 function global:__hy_log {
